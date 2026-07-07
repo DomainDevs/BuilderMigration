@@ -1,0 +1,6 @@
+@DataToolkit.MigrationBuilder_HostAddress = http://localhost:5193
+
+GET {{DataToolkit.MigrationBuilder_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

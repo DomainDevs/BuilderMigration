@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Library\DataToolkit.Library\DataToolkit.Library.csproj" />
+    <ProjectReference Include="..\..\Library\DataToolkit.Provider.SqlServer\DataToolkit.Provider.SqlServer.csproj" />
+  </ItemGroup>
+
+</Project>
