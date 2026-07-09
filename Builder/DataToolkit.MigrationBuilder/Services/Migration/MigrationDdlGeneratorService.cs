@@ -1,12 +1,12 @@
 ﻿using DataToolkit.MigrationBuilder.Configuration;
 using DataToolkit.MigrationBuilder.Helpers;
-using DataToolkit.MigrationBuilder.Models.Metadata;
 using Microsoft.Extensions.Options;
 
 namespace DataToolkit.MigrationBuilder.Services.Migration;
 
 public sealed class MigrationDdlGeneratorService
 {
+
     private readonly MigrationOptions _options;
 
     public MigrationDdlGeneratorService(

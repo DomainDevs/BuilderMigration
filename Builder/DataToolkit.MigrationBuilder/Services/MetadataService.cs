@@ -1,34 +1,16 @@
-﻿using DataToolkit.MigrationBuilder.Models.Connections;
-using DataToolkit.MigrationBuilder.Models.Metadata;
+﻿using DataToolkit.Library.UnitOfWorkLayer;
 
 namespace DataToolkit.MigrationBuilder.Services;
 
 public class MetadataService
 {
     public async Task<List<TableMetadata>> ExtractMetadataAsync(
-        ConnectionRequest connection,
+        IUnitOfWork unitOfWork, //asigna context
         string? schema = null,
         List<string>? tables = null)
     {
-        var metadata = new List<TableMetadata>();
-
-        var cs = new SqlConnectionStringBuilder
-        {
-            DataSource = connection.Server,
-            InitialCatalog = connection.Database,
-            UserID = connection.User,
-            Password = connection.Password,
-            TrustServerCertificate = true,
-            Encrypt = false
-        };
-
-        await using var conn =
-            new SqlConnection(cs.ConnectionString);
-
-        await conn.OpenAsync();
-
-        var filters = new List<string>();
-
+        List<TableMetadata> metadata = new List<TableMetadata>();
+        List<string> filters = new List<string>();
         if (!string.IsNullOrWhiteSpace(schema))
         {
             filters.Add("s.name = @Schema");
@@ -48,9 +30,7 @@ public class MetadataService
                 ? $"WHERE {string.Join(" AND ", filters)}"
                 : string.Empty;
 
-        using var cmd = conn.CreateCommand();
-
-        cmd.CommandText = $@"
+        var sql = $@"
 SELECT
     s.name AS SchemaName,
     t.name AS TableName,
@@ -165,18 +145,14 @@ ORDER BY
     c.column_id;
 ";
 
-        if (!string.IsNullOrWhiteSpace(schema))
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = "@Schema";
-            p.Value = schema;
-            cmd.Parameters.Add(p);
-        }
+        var rows =
+            await unitOfWork.Sql.FromSqlDictionaryAsync(
+                sql,
+                string.IsNullOrWhiteSpace(schema)
+                    ? null
+                    : new { Schema = schema });
 
-        using var reader =
-            await cmd.ExecuteReaderAsync();
-
-        while (await reader.ReadAsync())
+        foreach (var reader in rows)
         {
             var schemaName =
                 reader["SchemaName"]?.ToString() ?? "";

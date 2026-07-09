@@ -109,6 +109,53 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
                 cancellationToken: ct)); // <-- Pasar a Dapper
         }, sql);
     }
+    // =========================================================
+    // DICTIONARY
+    // =========================================================
+
+    public IEnumerable<IDictionary<string, object>> FromSqlDictionary(
+        string sql,
+        object? parameters = null,
+        int? commandTimeout = null)
+    {
+        return ExecuteSafe(() =>
+        {
+            var conn = GetOpenConnection();
+
+            return conn.Query(sql,
+                    parameters,
+                    Tx,
+                    commandTimeout: commandTimeout ?? _defaultTimeout)
+                .Select(r => (IDictionary<string, object>)new Dictionary<string, object>((IDictionary<string, object>)r))
+                .ToList();
+        }, sql);
+    }
+
+    public async Task<IEnumerable<IDictionary<string, object>>> FromSqlDictionaryAsync(
+        string sql,
+        object? parameters = null,
+        int? commandTimeout = null,
+        CancellationToken ct = default)
+    {
+        return await ExecuteSafeAsync(async () =>
+        {
+            var conn = GetOpenConnection();
+
+            var rows = await conn.QueryAsync(
+                new CommandDefinition(
+                    sql,
+                    parameters,
+                    Tx,
+                    commandTimeout ?? _defaultTimeout,
+                    cancellationToken: ct));
+
+            return rows
+                .Select(r => (IDictionary<string, object>)new Dictionary<string, object>((IDictionary<string, object>)r))
+                .ToList();
+        }, sql);
+    }
+
+
 
     // =========================================================
     // INTERPOLATED SQL

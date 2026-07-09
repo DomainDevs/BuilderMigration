@@ -1,4 +1,6 @@
-﻿namespace DataToolkit.MigrationBuilder.Configuration;
+﻿using DataToolkit.Library.Common;
+
+namespace DataToolkit.MigrationBuilder.Configuration;
 
 public sealed class MigrationOptions
 {
@@ -9,6 +11,10 @@ public sealed class MigrationOptions
     public string SqlOutputPath { get; set; } = "";
 
     public string MetadataOutPut { get; set; } = "";
+
+    public string DdlPath { get; set; } = "";
+
+    public string ExtractionPath { get; set; } = "";
 
     public string DefaultSchema { get; set; } = "dbo";
 }

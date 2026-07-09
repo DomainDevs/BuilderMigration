@@ -1,6 +1,5 @@
 ﻿using DataToolkit.MigrationBuilder.Configuration;
 using DataToolkit.MigrationBuilder.Helpers;
-using DataToolkit.MigrationBuilder.Models.Metadata;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
@@ -20,6 +19,16 @@ public sealed class MigrationWorkFileService
     {
         return _options.SqlOutputPath;
     }
+
+    public string pathconfigureDDL()
+    {
+        return _options.DdlPath;
+    }
+    public string pathconfigureSQL()
+    {
+        return _options.ExtractionPath;
+    }
+
     public async Task GenerateMigrationWorkFilesAsync(
         List<TableMetadata> sourceMetadata,
         List<TableMetadata> targetMetadata,

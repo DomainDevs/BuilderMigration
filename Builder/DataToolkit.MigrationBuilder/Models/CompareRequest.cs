@@ -1,20 +1,10 @@
 ﻿using DataToolkit.MigrationBuilder.Helpers;
-using DataToolkit.MigrationBuilder.Models.Connections;
 using System.ComponentModel;
 
 namespace DataToolkit.MigrationBuilder.Models;
 
 public sealed class CompareRequest
 {
-    /// <summary>
-    /// Base de datos origen.
-    /// </summary>
-    public ConnectionRequest SourceConnectionString { get; set; }
-
-    /// <summary> 
-    /// Base de datos destino. 
-    /// </summary>
-    public ConnectionRequest TargetConnectionString { get; set; }
 
     /// <summary> 
     /// Esquema a comparar. 

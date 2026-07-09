@@ -1,7 +1,9 @@
-﻿using DataToolkit.MigrationBuilder.Services;
+﻿using DataToolkit.Library.UnitOfWorkLayer;
+using DataToolkit.MigrationBuilder.Helpers;
+using DataToolkit.MigrationBuilder.Infrastructure.Connect;
+using DataToolkit.MigrationBuilder.Services;
 using DataToolkit.MigrationBuilder.Services.Migration;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace DataToolkit.MigrationBuilder.Controllers;
 
@@ -14,53 +16,33 @@ public class MigrationController : ControllerBase
     private readonly MigrationWorkFileService _workFileService;
     private readonly MigrationDdlGeneratorService _ddlGeneratorService;
     private readonly MigrationExtractionGeneratorService _migrationExtractionGeneratorService;
-    
+
+    private readonly MigrationExecutionService _migrationExecutionService;
+
+    private readonly IUnitOfWork _source; //context db1
+    private readonly IUnitOfWork _target; //context db2
 
     public MigrationController(
     MetadataService metadataService,
     MigrationMetadataService migrationMetadataService,
     MigrationWorkFileService workFileService,
     MigrationDdlGeneratorService ddlGeneratorService,
-    MigrationExtractionGeneratorService migrationExtractionGeneratorService)
+    MigrationExtractionGeneratorService migrationExtractionGeneratorService,
+    
+    MigrationExecutionService migrationExecutionService,
+
+    DataToolkitContext context)
     {
         _metadataService = metadataService;
         _migrationMetadataService = migrationMetadataService;
         _workFileService = workFileService;
         _ddlGeneratorService = ddlGeneratorService;
         _migrationExtractionGeneratorService = migrationExtractionGeneratorService;
+        _migrationExecutionService = migrationExecutionService;
+
+        _source = context.Source;
+        _target = context.Target;
     }
-
-    /// <summary>
-    /// Compara metadata entre origen y destino.
-    /// </summary>
-    /*
-    [HttpPost("compare")]
-    public async Task<IActionResult> Compare(
-        [FromBody] CompareRequest request)
-    {
-        if (request == null)
-            return BadRequest("Request inválido.");
-
-        var sourceMetadata =
-            await _metadataService.ExtractMetadataAsync(
-                request.SourceConnectionString,
-                request.Schema,
-                request.Tables);
-
-        var targetMetadata =
-            await _metadataService.ExtractMetadataAsync(
-                request.TargetConnectionString,
-                request.Schema,
-                request.Tables);
-
-        var differences =
-            _migrationMetadataService.CompareMetadata(
-                sourceMetadata,
-                targetMetadata);
-
-        return Ok(differences);
-    }
-    */
 
     /// <summary>
     /// Genera WorkFiles.
@@ -74,13 +56,13 @@ public class MigrationController : ControllerBase
 
         var sourceMetadata =
             await _metadataService.ExtractMetadataAsync(
-                request.SourceConnectionString,
+                _source,
                 request.Schema,
                 request.Tables);
 
         var targetMetadata =
             await _metadataService.ExtractMetadataAsync(
-                request.TargetConnectionString,
+                _target,
                 request.Schema,
                 request.Tables);
 
@@ -103,49 +85,6 @@ public class MigrationController : ControllerBase
     }
 
     /// <summary>
-    /// Genera WorkFiles de migración.
-    /// </summary>
-    /*
-    [HttpPost("workfiles")]
-    public async Task<IActionResult> GenerateWorkFiles(
-        [FromBody] CompareRequest request)
-    {
-        if (request == null)
-            return BadRequest("Request inválido.");
-
-        var sourceMetadata =
-            await _metadataService.ExtractMetadataAsync(
-                request.SourceConnectionString,
-                request.Schema,
-                request.Tables);
-
-        var targetMetadata =
-            await _metadataService.ExtractMetadataAsync(
-                request.TargetConnectionString,
-                request.Schema,
-                request.Tables);
-
-        var outputPath =
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "WF_OUTPUT");
-        outputPath = _workFileService.pathconfigure();
-
-        await _workFileService.GenerateMigrationWorkFilesAsync(
-            sourceMetadata,
-            targetMetadata,
-            request.ArtifactType,
-            outputPath);
-
-        return Ok(new
-        {
-            OutputPath = outputPath,
-            WorkFilesGenerated = true
-        });
-    }
-    */
-
-    /// <summary>
     /// Genera scripts SQL creacion tabla WF.
     /// </summary>
     [HttpPost("generate-ddl")]
@@ -155,13 +94,13 @@ public class MigrationController : ControllerBase
 
         var metadataSource =
             await _metadataService.ExtractMetadataAsync(
-                request.SourceConnectionString,
+                _source,
                 request.Schema,
                 request.Tables);
 
         var metadataTarget =
             await _metadataService.ExtractMetadataAsync(
-                request.TargetConnectionString,
+                _target,
                 request.Schema,
                 request.Tables);
 
@@ -171,7 +110,6 @@ public class MigrationController : ControllerBase
         var outputPath = "";
         outputPath = _workFileService.pathconfigure();
 
-        //return Ok();
         return Ok(new
         {
             OutputPath = outputPath,
@@ -189,13 +127,13 @@ public class MigrationController : ControllerBase
     {
         var metadataSource =
             await _metadataService.ExtractMetadataAsync(
-                request.SourceConnectionString,
+                _source,
                 request.Schema,
                 request.Tables);
 
         var metadataTarget =
             await _metadataService.ExtractMetadataAsync(
-                request.TargetConnectionString,
+                _target,
                 request.Schema,
                 request.Tables);
 
@@ -214,49 +152,33 @@ public class MigrationController : ControllerBase
         });
     }
 
+
     /// <summary>
-    /// Genera scripts SQL a partir de WorkFiles.
+    /// Ejecuta la migración utilizando los artefactos generados
+    /// (DDL + SQL + WorkFiles).
     /// </summary>
-    /*
-    [HttpPost("workFileToSql")]
-    public async Task<IActionResult> GenerateSql(
-        [FromBody] GenerateSqlRequest request)
+    [HttpPost("execute-migration")]
+    public async Task<IActionResult> ExecuteMigration()
     {
-        await _sqlGeneratorService.GenerateSqlScriptsAsync(request);
+        var ddlFolder =
+            _workFileService.pathconfigureDDL();
+
+        var sqlFolder =
+            _workFileService.pathconfigureSQL();
+
+        await _migrationExecutionService.ExecuteAsync(
+            _source,
+            _target,
+            ddlFolder,
+            sqlFolder);
 
         return Ok(new
         {
-            ScriptsGenerated = true
+            Success = true,
+            Message = "Migration executed successfully.",
+            DdlFolder = ddlFolder,
+            SqlFolder = sqlFolder
         });
     }
-    */
-
-    /// <summary>
-    /// Genera listado de dependecias de una tabla
-    /// </summary>
-    /*
-    [HttpPost("table-dependencies")]
-    public async Task<IActionResult> Dependencies(
-        [FromBody] CompareRequest request, 
-        [FromQuery] int level = 1)
-    {
-        var metadata =
-            await _metadataService.ExtractMetadataAsync(
-                request.SourceConnectionString,
-                request.Schema,
-                request.Tables);
-
-        var tableName =
-            request.Tables.FirstOrDefault();
-
-        var dependencies =
-            _dependencyService.GetDependencies(
-                tableName!,
-                metadata,
-                level);
-
-        return Ok(dependencies);
-    }
-    */
 
 }

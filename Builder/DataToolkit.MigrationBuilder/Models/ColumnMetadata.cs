@@ -1,4 +1,4 @@
-﻿namespace DataToolkit.MigrationBuilder.Models.Metadata;
+﻿namespace DataToolkit.MigrationBuilder.Models;
 
 public class ColumnMetadata
 {

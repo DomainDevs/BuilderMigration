@@ -1,16 +1,12 @@
-﻿using DataToolkit.Library.Connections;
-using DataToolkit.Library.Extensions;
-using DataToolkit.MigrationBuilder.Configuration;
+﻿using DataToolkit.Library.Engine.Abstractions;
+using DataToolkit.Library.Engine.Script;
+using DataToolkit.MigrationBuilder.Infrastructure.Migration;
 using DataToolkit.MigrationBuilder.Services;
 using DataToolkit.MigrationBuilder.Services.Migration;
-using DataToolkit.Provider.SqlServer.Connections.Providers;
-using DataToolkit.Provider.SqlServer.Extensions;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Data.Common;
 
-namespace DataToolkit.MigrationBuilder.Infrastructure;
+namespace DataToolkit.MigrationBuilder.Infrastructure.Services;
 
-public static class DependencyInjection
+public static class AddInjectionServices
 {
     public static IServiceCollection AddBuilderServices(
         this IServiceCollection services)
@@ -21,6 +17,13 @@ public static class DependencyInjection
         services.AddScoped<MigrationWorkFileService>();
         services.AddScoped<MigrationDdlGeneratorService>();
         services.AddScoped<MigrationExtractionGeneratorService>();
+
+        services.AddScoped<MigrationExecutionService>();
+        services.AddScoped<ArtifactDiscoveryService>();
+        services.AddScoped<DatabaseRuntimeService>();
+
+
+        services.AddSingleton<ISqlScriptExecutor, SqlScriptExecutor>();
 
         return services;
     }

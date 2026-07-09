@@ -1,18 +1,15 @@
 using DataToolkit.MigrationBuilder.Configuration;
-using DataToolkit.MigrationBuilder.Infrastructure;
+using DataToolkit.MigrationBuilder.Infrastructure.Connect;
+using DataToolkit.MigrationBuilder.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuración del Migration Builder
+// Configuración del Builder
 builder.Services.Configure<MigrationOptions>(
     builder.Configuration.GetSection(MigrationOptions.SectionName));
 
-// Configuración completa (SourceDB, DestinationDB y Migration)
-builder.Services.Configure<MigrationConfiguration>(
-    builder.Configuration);
-
 // DataToolkit
-builder.Services.AddDataToolkitSample(builder.Configuration);
+builder.Services.AddBuilderDataToolkit(builder.Configuration);
 
 // Servicios del Builder
 builder.Services.AddBuilderServices();

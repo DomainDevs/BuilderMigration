@@ -22,6 +22,8 @@ namespace DataToolkit.Library.Engine.Abstractions
         Task<IEnumerable<T>> FromSqlAsync<T>(string sql);
         Task<IEnumerable<T>> FromSqlAsync<T>(string sql, object? parameters = null, int? commandTimeout = null, CancellationToken ct = default);
         Task<IEnumerable<T>> FromSqlAsync<T>(string sql, object? parameters);
+        IEnumerable<IDictionary<string, object>> FromSqlDictionary(string sql, object? parameters = null, int? commandTimeout = null);
+        Task<IEnumerable<IDictionary<string, object>>> FromSqlDictionaryAsync(string sql, object? parameters = null, int? commandTimeout = null, CancellationToken ct = default);
         IEnumerable<T> FromSqlInterpolated<T>(FormattableString query);
         IEnumerable<T> FromSqlInterpolated<T>(FormattableString query, int? commandTimeout = null);
         Task<IEnumerable<T>> FromSqlInterpolatedAsync<T>(FormattableString query, int? commandTimeout = null, CancellationToken ct = default);
