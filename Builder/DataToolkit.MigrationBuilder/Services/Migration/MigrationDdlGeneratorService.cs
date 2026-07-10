@@ -74,8 +74,16 @@ public sealed class MigrationDdlGeneratorService
         // El WFile/Homologation utiliza siempre la estructura del destino para garantizar compatibilidad con la carga.
         foreach (ColumnMetadata targetColumn in targetTable.Columns)
         {
+            ColumnMetadata? sourceColumn =
+                sourceTable.Columns.FirstOrDefault(c =>
+                    c.Name.Equals(
+                        targetColumn.Name,
+                        StringComparison.OrdinalIgnoreCase));
+
             columns.Add(
-                BuildColumn(targetColumn));
+                BuildColumn(
+                    sourceColumn,
+                    targetColumn));
         }
 
         string columnScript =
@@ -107,10 +115,72 @@ GO
     }
 
     private static string BuildColumn(
-        ColumnMetadata column)
+        ColumnMetadata? sourceColumn,
+        ColumnMetadata targetColumn)
     {
+        string warning =
+            BuildWarning(
+                sourceColumn,
+                targetColumn);
+
         return
-            $"        [{column.Name}] {BuildSqlType(column)} NULL";
+            $"        [{targetColumn.Name}] {BuildSqlType(targetColumn)} NULL{warning}";
+    }
+
+    private static string BuildWarning(
+        ColumnMetadata? source,
+        ColumnMetadata target)
+    {
+        if (source is null)
+            return string.Empty;
+
+        string sourceType = BuildSqlType(source);
+        string targetType = BuildSqlType(target);
+
+        // Tipo de dato
+        if (!source.SqlType.Equals(
+                target.SqlType,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.DataTypeMismatch.GetMessage()} */";
+        }
+
+        // Longitud
+        if (int.TryParse(source.MaxLength, out var sourceLength) &&
+            int.TryParse(target.MaxLength, out var targetLength) &&
+            sourceLength > targetLength)
+        {
+            return
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.LengthMismatch.GetMessage()} */";
+        }
+
+        // Precisión
+        if (int.TryParse(source.Precision, out var sourcePrecision) &&
+            int.TryParse(target.Precision, out var targetPrecision) &&
+            sourcePrecision > targetPrecision)
+        {
+            return
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.PrecisionMismatch.GetMessage()} */";
+        }
+
+        // Escala
+        if (int.TryParse(source.Scale, out var sourceScale) &&
+            int.TryParse(target.Scale, out var targetScale) &&
+            sourceScale > targetScale)
+        {
+            return
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.ScaleMismatch.GetMessage()} */";
+        }
+
+        // Nullable
+        if (source.IsNullable && !target.IsNullable)
+        {
+            return
+                $" /* WARNING: Source NULL -> Target NOT NULL. {MigrationWarning.NullableMismatch.GetMessage()} */";
+        }
+
+        return string.Empty;
     }
 
     private static string BuildSqlType(ColumnMetadata column)

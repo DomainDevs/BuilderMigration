@@ -23,50 +23,43 @@ public sealed class MigrationExecutionService
     {
         foreach (var artifact in _discovery.Discover(ddlFolder, sqlFolder))
         {
-            var ddl = await File.ReadAllTextAsync(artifact.DdlFile);
-            await _db.ExecuteDdlAsync(target, ddl);
+            string? ddl = await File.ReadAllTextAsync(artifact.DdlFile); //Leer DDL
+            await _db.ExecuteDdlAsync(target, ddl); //Compilar tabla destino DDL
 
-            if (artifact.Prefix.Equals(
-                    "WF",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
+            //Limpiar tabla destino
+            await _db.ExecuteDdlAsync(target,
+                $"DELETE FROM {artifact.Schema}.{artifact.Table};");
 
-            await _db.ExecuteDdlAsync(target, $"DELETE FROM {artifact.Schema}.{artifact.Table};");
-
-            List<TableMetadata> sourceMeta //ORIGEN: tabla real
+            List<TableMetadata> sourceTable //ORIGEN: tabla real
                 = await _db.GetMetadataAsync(source, artifact.Schema, artifact.Table);
-            List<TableMetadata> targetMeta //DESTINO: DDL, tabla creada
+            List<TableMetadata> artifactTable //DESTINO: DDL, tabla creada
                 = await _db.GetMetadataAsync(target, artifact.Schema, $"{artifact.Prefix}_{artifact.Table}");
-            List<TableMetadata> targetMetaOutTable //DESTINO: tabla real
+            List<TableMetadata> destinationTable //DESTINO: tabla real
                 = await _db.GetMetadataAsync(target, artifact.Schema, artifact.Table);
 
-            //await _db.ExecuteDdlAsync(target, ddl); //Limpiar tabla destino
+            string columns = BuildColumnList(sourceTable.Single());
 
-            var columns = BuildColumnList(sourceMeta.Single());
+            //Si no hay archivo de extraccion, solo compila la DDL
+            if (artifact.SqlFile is null)
+                continue;
 
-            string selectSql = $"""
-SELECT
-    {columns}
-FROM [{artifact.Schema}].[{artifact.Table}]
-""";
+            //Leer el script de extraccion
+            string? sql = await File.ReadAllTextAsync(artifact.SqlFile);
+            artifact.SqlFile = null;
 
-            var sql = artifact.SqlFile is null
-                ? $"{selectSql} FROM {artifact.Schema}.{artifact.Table}"
-                : await File.ReadAllTextAsync(artifact.SqlFile);
-
+            //Validar si el script es valido para ejecutarse
             SqlScriptValidator.Validate(sql);
 
+            //Crear un cursor de extraccion datos desde el origen (con el script).
             var rows = await _db.ExecuteExtractionAsync(source, sql);
 
             // TODO:
-            // AutoMap sourceMeta -> targetMeta
+            // AutoMap sourceTable -> artifactTable
             // Insert rows into WF/STG/HM
-            // Execute final load
+            // Execute final load (Parameterized SQL Statement).
             var insertSql =
                 BuildInsert(
-                    targetMeta.Single());
+                    artifactTable.Single());
 
             foreach (var row in rows)
             {
@@ -75,7 +68,12 @@ FROM [{artifact.Schema}].[{artifact.Table}]
                     row);
             }
 
-            insertSql = BuildInsert(targetMetaOutTable.Single());
+            // TODO:
+            // AutoMap artifactTable -> destinationTable
+            // Insert rows into destinationTable
+            // Execute final load (Parameterized SQL Statement).
+            insertSql = BuildInsert(destinationTable.Single());
+            
 
             foreach (var row in rows)
             {

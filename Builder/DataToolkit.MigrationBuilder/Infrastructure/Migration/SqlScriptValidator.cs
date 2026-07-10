@@ -1,6 +1,5 @@
-﻿using System.Text.RegularExpressions;
-
-namespace DataToolkit.MigrationBuilder.Infrastructure.Migration;
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System.Text.RegularExpressions;
 
 public static class SqlScriptValidator
 {
@@ -9,7 +8,39 @@ public static class SqlScriptValidator
     {
         ArgumentNullException.ThrowIfNull(script);
 
+        ValidateSyntax(script);
         ValidateDoubleQuotedStrings(script);
+    }
+
+    private static void ValidateSyntax(
+        string script)
+    {
+        var parser = new TSql170Parser(false);
+
+        using var reader = new StringReader(script);
+
+        TSqlFragment fragment =
+            parser.Parse(
+                reader,
+                out IList<ParseError> errors);
+
+        if (errors.Count == 0)
+            return;
+
+        var message =
+            string.Join(
+                Environment.NewLine,
+                errors.Select(e =>
+                    $"Línea {e.Line}, Columna {e.Column}: {e.Message}"));
+
+        throw new InvalidOperationException(
+$"""
+El script SQL contiene errores de sintaxis y no puede ejecutarse.
+
+{message}
+
+Revise el archivo SQL y vuelva a ejecutar la migración.
+""");
     }
 
     private static void ValidateDoubleQuotedStrings(
@@ -19,9 +50,12 @@ public static class SqlScriptValidator
             script,
             "\"[^\"]+\"");
 
-        foreach (Match match in matches)
-        {
-            throw new InvalidOperationException(
+        if (matches.Count == 0)
+            return;
+
+        Match match = matches[0];
+
+        throw new InvalidOperationException(
 $"""
 Se detectó un posible literal de texto entre comillas dobles.
 
@@ -39,6 +73,5 @@ Correcto:
 
 Revise el archivo SQL y vuelva a ejecutar la migración.
 """);
-        }
     }
 }
