@@ -1,3 +1,4 @@
+using DataToolkit.BulkTransfer.DependencyInjection;
 using DataToolkit.MigrationBuilder.Configuration;
 using DataToolkit.MigrationBuilder.Infrastructure.Connect;
 using DataToolkit.MigrationBuilder.Infrastructure.Services;
@@ -10,6 +11,9 @@ builder.Services.Configure<MigrationOptions>(
 
 // DataToolkit
 builder.Services.AddBuilderDataToolkit(builder.Configuration);
+
+//Add bulk
+builder.Services.AddBulkTransfer();
 
 // Servicios del Builder
 builder.Services.AddBuilderServices();

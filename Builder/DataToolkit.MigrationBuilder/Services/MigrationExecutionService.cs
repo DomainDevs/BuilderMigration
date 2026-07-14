@@ -1,5 +1,10 @@
-﻿using DataToolkit.Library.UnitOfWorkLayer;
+﻿using DataToolkit.BulkTransfer.Abstractions;
+using DataToolkit.Library;
+using DataToolkit.Library.UnitOfWorkLayer;
 using DataToolkit.MigrationBuilder.Infrastructure.Migration;
+using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace DataToolkit.MigrationBuilder.Services;
 
@@ -7,13 +12,20 @@ public sealed class MigrationExecutionService
 {
     private readonly ArtifactDiscoveryService _discovery;
     private readonly DatabaseRuntimeService _db;
+    private readonly IBulkTransferEngine _bulk;
+    private readonly IConfiguration _configuration;
 
     public MigrationExecutionService(
         ArtifactDiscoveryService discovery,
-        DatabaseRuntimeService db)
+        DatabaseRuntimeService db,
+        IBulkTransferEngine bulk,
+        IConfiguration configuration)
     {
         _discovery = discovery;
         _db = db;
+        _configuration = configuration;
+        _bulk = bulk;
+        
     }
     public async Task ExecuteAsync(
         IUnitOfWork source,
@@ -45,42 +57,42 @@ public sealed class MigrationExecutionService
 
             //Leer el script de extraccion
             string? sql = await File.ReadAllTextAsync(artifact.SqlFile);
+            sql = RemoveComments(sql);
             artifact.SqlFile = null;
 
             //Validar si el script es valido para ejecutarse
             SqlScriptValidator.Validate(sql);
 
-            //Crear un cursor de extraccion datos desde el origen (con el script).
-            var rows = await _db.ExecuteExtractionAsync(source, sql);
+            await using SqlConnection sourceConnection =
+                new SqlConnection(_configuration.GetConnectionString("Source"));
 
-            // TODO:
-            // AutoMap sourceTable -> artifactTable
-            // Insert rows into WF/STG/HM
-            // Execute final load (Parameterized SQL Statement).
-            var insertSql =
-                BuildInsert(
-                    artifactTable.Single());
+            await using SqlConnection targetConnection =
+                new SqlConnection(_configuration.GetConnectionString("Target"));
 
-            foreach (var row in rows)
-            {
-                await target.Sql.ExecuteAsync(
-                    insertSql,
-                    row);
-            }
+            await using SqlConnection targetReadConnection =
+                new SqlConnection(_configuration.GetConnectionString("Target"));
 
-            // TODO:
-            // AutoMap artifactTable -> destinationTable
-            // Insert rows into destinationTable
-            // Execute final load (Parameterized SQL Statement).
-            insertSql = BuildInsert(destinationTable.Single());
-            
+            await sourceConnection.OpenAsync();
+            await targetConnection.OpenAsync();
+            await targetReadConnection.OpenAsync();
 
-            foreach (var row in rows)
-            {
-                await target.Sql.ExecuteAsync(
-                    insertSql,
-                    row);
-            }
+            // Origen -> STG
+            await _bulk.TransferAsync(
+                sourceConnection,
+                targetConnection,
+                sql,
+                artifactTable.Single());
+
+            // STG -> Tabla Final
+            await _bulk.TransferAsync(
+                targetReadConnection,
+                targetConnection,
+                artifactTable.Single(),
+                destinationTable.Single());
+
+            if (sourceConnection.State == ConnectionState.Open) sourceConnection.Close();
+            if (targetConnection.State == ConnectionState.Open) targetConnection.Close();
+            if (targetReadConnection.State == ConnectionState.Open) targetReadConnection.Close();
 
         }
     }
@@ -121,6 +133,15 @@ VALUES
     {string.Join(", ", parameters)}
 )
 """;
+    }
+
+    private static string RemoveComments(string sql)
+    {
+        return Regex.Replace(
+            sql,
+            @"/\*.*?\*/",
+            string.Empty,
+            RegexOptions.Singleline);
     }
 
 }

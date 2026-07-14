@@ -16,5 +16,7 @@ public enum MigrationWarning
 
     MissingTargetColumn,
 
-    MissingSourceColumn
+    MissingSourceColumn,
+
+    IdentityColumn
 }

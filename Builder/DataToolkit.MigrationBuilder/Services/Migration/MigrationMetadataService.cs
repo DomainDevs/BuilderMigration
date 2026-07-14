@@ -1,4 +1,5 @@
-﻿using DataToolkit.Library.UnitOfWorkLayer;
+﻿using DataToolkit.Library;
+using DataToolkit.Library.UnitOfWorkLayer;
 using DataToolkit.MigrationBuilder.Configuration;
 using Microsoft.Extensions.Options;
 

@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\Sistran\Fuentes\migration4\Library\DataToolkit.BulkTransfer\DataToolkit.BulkTransfer.csproj" />
     <ProjectReference Include="..\..\Library\DataToolkit.Library\DataToolkit.Library.csproj" />
     <ProjectReference Include="..\..\Library\DataToolkit.Provider.SqlServer\DataToolkit.Provider.SqlServer.csproj" />
   </ItemGroup>

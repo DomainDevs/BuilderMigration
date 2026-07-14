@@ -1,4 +1,4 @@
-﻿namespace DataToolkit.MigrationBuilder.Models;
+﻿namespace DataToolkit.Library;
 
 public class TableMetadata
 {
