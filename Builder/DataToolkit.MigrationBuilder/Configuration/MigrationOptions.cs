@@ -16,5 +16,7 @@ public sealed class MigrationOptions
 
     public string ExtractionPath { get; set; } = "";
 
+    public string ApprovedPath { get; set; } = "";
+
     public string DefaultSchema { get; set; } = "dbo";
 }

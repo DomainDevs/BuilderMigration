@@ -30,6 +30,11 @@ public sealed class MigrationWorkFileService
         return _options.ExtractionPath;
     }
 
+    public string pathApproved()
+    {
+        return _options.ApprovedPath;
+    }
+
     public async Task GenerateMigrationWorkFilesAsync(
         List<TableMetadata> sourceMetadata,
         List<TableMetadata> targetMetadata,

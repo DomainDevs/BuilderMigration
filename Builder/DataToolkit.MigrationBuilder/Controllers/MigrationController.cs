@@ -120,7 +120,8 @@ public class MigrationController : ControllerBase
     /// (DDL + SQL + WorkFiles).
     /// </summary>
     [HttpPost("execute-migration")]
-    public async Task<IActionResult> ExecuteMigration(ExecutionRequest request)
+    public async Task<IActionResult> ExecuteMigration(
+        [FromBody] ExecutionRequest request)
     {
         try
         {
@@ -128,31 +129,28 @@ public class MigrationController : ControllerBase
 
             var sqlFolder = _workFileService.pathconfigureSQL();
 
-            await _migrationExecutionService.ExecuteAsync(
-                _source,
-                _target,
-                ddlFolder,
-                sqlFolder,
-                request.DeleteTargetData);
+            var approvedPath = _workFileService.pathApproved();
+
+            List<MigrationTableResult> migrationResult =
+                await _migrationExecutionService.ExecuteAsync(
+                    _source,
+                    _target,
+                    ddlFolder,
+                    sqlFolder,
+                    approvedPath,
+                    request.DeleteTargetData
+                    );
 
             return Ok(new
             {
                 Success = true,
                 Message = "Migration executed successfully.",
                 DdlFolder = ddlFolder,
-                SqlFolder = sqlFolder
+                SqlFolder = sqlFolder,
+                approvedFolder = approvedPath,
+                Result = migrationResult
             });
         }
-        /*
-        catch (BulkTransferException ex)
-        {
-            return BadRequest(new
-            {
-                Success = false,
-                Message = ex.Message,
-                Detail = ex.InnerException?.Message
-            });
-        }*/
         catch (Exception ex)
         {
             return StatusCode(StatusCodes.Status500InternalServerError, new
@@ -163,4 +161,5 @@ public class MigrationController : ControllerBase
             });
         }
     }
+
 }
