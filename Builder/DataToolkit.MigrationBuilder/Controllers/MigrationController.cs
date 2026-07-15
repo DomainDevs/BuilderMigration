@@ -120,7 +120,7 @@ public class MigrationController : ControllerBase
     /// (DDL + SQL + WorkFiles).
     /// </summary>
     [HttpPost("execute-migration")]
-    public async Task<IActionResult> ExecuteMigration()
+    public async Task<IActionResult> ExecuteMigration(ExecutionRequest request)
     {
         try
         {
@@ -132,7 +132,8 @@ public class MigrationController : ControllerBase
                 _source,
                 _target,
                 ddlFolder,
-                sqlFolder);
+                sqlFolder,
+                request.DeleteTargetData);
 
             return Ok(new
             {

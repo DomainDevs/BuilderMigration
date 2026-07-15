@@ -26,13 +26,15 @@ public sealed class MigrationExecutionService
         _db = db;
         _configuration = configuration;
         _bulk = bulk;
-        
+
     }
     public async Task ExecuteAsync(
         IUnitOfWork source,
         IUnitOfWork target,
         string ddlFolder,
-        string sqlFolder)
+        string sqlFolder,
+        bool isDelete = false)
+
     {
         foreach (var artifact in _discovery.Discover(ddlFolder, sqlFolder))
         {
@@ -40,8 +42,23 @@ public sealed class MigrationExecutionService
             await _db.ExecuteDdlAsync(target, ddl); //Compilar tabla destino DDL
 
             //Limpiar tabla destino
-            await _db.ExecuteDdlAsync(target,
-                $"DELETE FROM {artifact.Schema}.{artifact.Table};");
+            if (isDelete == true)
+            {
+                await _db.ExecuteDdlAsync(target, $"DELETE FROM {artifact.Schema}.{artifact.Table};");
+            }
+            else {
+                long count = (await target.Sql.FromSqlAsync<long>(
+                    $"SELECT COUNT(*) FROM [{artifact.Schema}].[{artifact.Table}]"))
+                    .Single();
+
+                if (count > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"La tabla destino [{artifact.Schema}].[{artifact.Table}] contiene {count} registros. " +
+                        "Debe vaciarla antes de ejecutar la migración.");
+                }
+            }
+
 
             List<TableMetadata> sourceTable //ORIGEN: tabla real
                 = await _db.GetMetadataAsync(source, artifact.Schema, artifact.Table);
@@ -108,14 +125,12 @@ public sealed class MigrationExecutionService
 
             await target.Sql.ExecuteAsync(Sqlistruction, columlist);
 
-
             if (sourceConnection.State == ConnectionState.Open) sourceConnection.Close();
             if (targetConnection.State == ConnectionState.Open) targetConnection.Close();
             if (targetReadConnection.State == ConnectionState.Open) targetReadConnection.Close();
 
         }
     }
-
 
     //Armar columnas
     private static string BuildColumnList(
@@ -164,10 +179,6 @@ INSERT INTO [{metadata.Schema}].[{metadata.Name}]
 )
 """;
         }
-
-
-
-
     }
 
     private static string RemoveComments(string sql)
