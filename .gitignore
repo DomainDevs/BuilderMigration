@@ -1,0 +1,6 @@
+Library/DataToolkit.Provider.Sybase/obj/
+Library/DataToolkit.Provider.SqlServer/obj/
+Library/DataToolkit.Library/obj/
+Library/DataToolkit.Provider.SqlLite/obj/
+Builder/DataToolkit.MigrationBuilder/obj/
+Build/Debug/

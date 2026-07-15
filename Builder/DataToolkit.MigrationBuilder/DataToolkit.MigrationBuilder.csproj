@@ -8,15 +8,23 @@
 
   <ItemGroup>
     
-    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.37.3" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
     
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" />
+    
+    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\Sistran\Fuentes\migration4\Library\DataToolkit.BulkTransfer\DataToolkit.BulkTransfer.csproj" />
-    <ProjectReference Include="..\..\Library\DataToolkit.Library\DataToolkit.Library.csproj" />
-    <ProjectReference Include="..\..\Library\DataToolkit.Provider.SqlServer\DataToolkit.Provider.SqlServer.csproj" />
+    <Reference Include="DataToolkit.BulkTransfer">
+      <HintPath>..\..\Build\Debug\DataToolkit.BulkTransfer.dll</HintPath>
+    </Reference>
+    <Reference Include="DataToolkit.Library">
+      <HintPath>..\..\Build\Debug\DataToolkit.Library.dll</HintPath>
+    </Reference>
+    <Reference Include="DataToolkit.Provider.SqlServer">
+      <HintPath>..\..\Build\Debug\DataToolkit.Provider.SqlServer.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

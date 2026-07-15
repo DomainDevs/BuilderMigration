@@ -2,6 +2,7 @@
 using DataToolkit.Library;
 using DataToolkit.Library.UnitOfWorkLayer;
 using DataToolkit.MigrationBuilder.Infrastructure.Migration;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;

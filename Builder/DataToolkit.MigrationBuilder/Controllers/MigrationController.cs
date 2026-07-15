@@ -1,4 +1,5 @@
-﻿using DataToolkit.Library.UnitOfWorkLayer;
+﻿using DataToolkit.BulkTransfer.Core;
+using DataToolkit.Library.UnitOfWorkLayer;
 using DataToolkit.MigrationBuilder.Helpers;
 using DataToolkit.MigrationBuilder.Infrastructure.Connect;
 using DataToolkit.MigrationBuilder.Services;
@@ -12,7 +13,7 @@ namespace DataToolkit.MigrationBuilder.Controllers;
 public class MigrationController : ControllerBase
 {
     private readonly MetadataService _metadataService;
-    private readonly MigrationMetadataService _migrationMetadataService;
+    //private readonly MigrationMetadataService _migrationMetadataService;
     private readonly MigrationWorkFileService _workFileService;
     private readonly MigrationDdlGeneratorService _ddlGeneratorService;
     private readonly MigrationExtractionGeneratorService _migrationExtractionGeneratorService;
@@ -24,7 +25,7 @@ public class MigrationController : ControllerBase
 
     public MigrationController(
     MetadataService metadataService,
-    MigrationMetadataService migrationMetadataService,
+    //MigrationMetadataService migrationMetadataService,
     MigrationWorkFileService workFileService,
     MigrationDdlGeneratorService ddlGeneratorService,
     MigrationExtractionGeneratorService migrationExtractionGeneratorService,
@@ -34,7 +35,7 @@ public class MigrationController : ControllerBase
     DataToolkitContext context)
     {
         _metadataService = metadataService;
-        _migrationMetadataService = migrationMetadataService;
+        //_migrationMetadataService = migrationMetadataService;
         _workFileService = workFileService;
         _ddlGeneratorService = ddlGeneratorService;
         _migrationExtractionGeneratorService = migrationExtractionGeneratorService;
@@ -44,45 +45,6 @@ public class MigrationController : ControllerBase
         _target = context.Target;
     }
 
-    /// <summary>
-    /// Genera WorkFiles.
-    /// </summary>
-    [HttpPost("metadata-report")]
-    public async Task<IActionResult> GenerateMetadataReport(
-        [FromBody] CompareRequest request)
-    {
-        if (request == null)
-            return BadRequest("Request inválido.");
-
-        var sourceMetadata =
-            await _metadataService.ExtractMetadataAsync(
-                _source,
-                request.Schema,
-                request.Tables);
-
-        var targetMetadata =
-            await _metadataService.ExtractMetadataAsync(
-                _target,
-                request.Schema,
-                request.Tables);
-
-        var outputPath =
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "METADATA_OUTPUT");
-
-        outputPath = _migrationMetadataService.pathconfigure(1);
-        await _migrationMetadataService.GenerateWorkFilesAsync(
-            sourceMetadata,
-            targetMetadata,
-            outputPath);
-
-        return Ok(new
-        {
-            OutputPath = outputPath,
-            FilesGenerated = true
-        });
-    }
 
     /// <summary>
     /// Genera scripts SQL creacion tabla WF.
@@ -160,25 +122,44 @@ public class MigrationController : ControllerBase
     [HttpPost("execute-migration")]
     public async Task<IActionResult> ExecuteMigration()
     {
-        var ddlFolder =
-            _workFileService.pathconfigureDDL();
-
-        var sqlFolder =
-            _workFileService.pathconfigureSQL();
-
-        await _migrationExecutionService.ExecuteAsync(
-            _source,
-            _target,
-            ddlFolder,
-            sqlFolder);
-
-        return Ok(new
+        try
         {
-            Success = true,
-            Message = "Migration executed successfully.",
-            DdlFolder = ddlFolder,
-            SqlFolder = sqlFolder
-        });
-    }
+            var ddlFolder = _workFileService.pathconfigureDDL();
 
+            var sqlFolder = _workFileService.pathconfigureSQL();
+
+            await _migrationExecutionService.ExecuteAsync(
+                _source,
+                _target,
+                ddlFolder,
+                sqlFolder);
+
+            return Ok(new
+            {
+                Success = true,
+                Message = "Migration executed successfully.",
+                DdlFolder = ddlFolder,
+                SqlFolder = sqlFolder
+            });
+        }
+        /*
+        catch (BulkTransferException ex)
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = ex.Message,
+                Detail = ex.InnerException?.Message
+            });
+        }*/
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                Success = false,
+                Message = ex.Message,
+                Detail = ex.InnerException?.Message
+            });
+        }
+    }
 }
