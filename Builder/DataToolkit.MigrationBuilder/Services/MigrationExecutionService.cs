@@ -85,11 +85,29 @@ public sealed class MigrationExecutionService
                 artifactTable.Single());
 
             // STG -> Tabla Final
+            /*
             await _bulk.TransferAsync(
                 targetReadConnection,
                 targetConnection,
                 artifactTable.Single(),
                 destinationTable.Single());
+            */
+
+            // TODO:
+            // AutoMap sourceTable -> artifactTable
+            // Insert rows into WF/STG/HM
+            // Execute final load (Parameterized SQL Statement).
+            string insertSql =
+                BuildInsert(
+                    destinationTable.Single(), false);
+            string columlist = BuildColumnList(
+                    destinationTable.Single());
+            columlist = $"SELECT {columlist} FROM {artifact.Schema}.{artifact.Prefix}_{artifact.Table}";
+
+            string Sqlistruction = $"""{insertSql}{columlist}""";
+
+            await target.Sql.ExecuteAsync(Sqlistruction, columlist);
+
 
             if (sourceConnection.State == ConnectionState.Open) sourceConnection.Close();
             if (targetConnection.State == ConnectionState.Open) targetConnection.Close();
@@ -112,7 +130,7 @@ public sealed class MigrationExecutionService
 
     //Insertar informacion
     private static string BuildInsert(
-        TableMetadata metadata)
+        TableMetadata metadata, bool addParams = false)
     {
         var columns = metadata.Columns
             .Where(c => !c.IsIdentity)
@@ -124,7 +142,9 @@ public sealed class MigrationExecutionService
             .Where(c => !c.IsComputed)
             .Select(c => $"@{c.Name}");
 
-        return $"""
+        if (addParams)
+        {
+            return $"""
 INSERT INTO [{metadata.Schema}].[{metadata.Name}]
 (
     {string.Join(", ", columns)}
@@ -134,6 +154,20 @@ VALUES
     {string.Join(", ", parameters)}
 )
 """;
+        }
+        else
+        {
+            return $"""
+INSERT INTO [{metadata.Schema}].[{metadata.Name}]
+(
+    {string.Join(", ", columns)}
+)
+""";
+        }
+
+
+
+
     }
 
     private static string RemoveComments(string sql)
