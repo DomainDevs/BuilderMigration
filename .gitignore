@@ -4,3 +4,4 @@ Library/DataToolkit.Library/obj/
 Library/DataToolkit.Provider.SqlLite/obj/
 Builder/DataToolkit.MigrationBuilder/obj/
 Build/Debug/
+Library/DataToolkit.BulkTransfer/obj/

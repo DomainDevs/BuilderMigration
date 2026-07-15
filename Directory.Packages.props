@@ -11,7 +11,7 @@
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.0.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="9.0.6" />
     <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.37.3" />
-    <PackageVersion Include="Serilog" Version="4.3.1" />
+    <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="AdoNetCore.AseClient" Version="0.19.2" />
   </ItemGroup>
 </Project>

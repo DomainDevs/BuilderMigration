@@ -16,15 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="DataToolkit.BulkTransfer">
-      <HintPath>..\..\Build\Debug\DataToolkit.BulkTransfer.dll</HintPath>
-    </Reference>
-    <Reference Include="DataToolkit.Library">
-      <HintPath>..\..\Build\Debug\DataToolkit.Library.dll</HintPath>
-    </Reference>
-    <Reference Include="DataToolkit.Provider.SqlServer">
-      <HintPath>..\..\Build\Debug\DataToolkit.Provider.SqlServer.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\Library\DataToolkit.BulkTransfer\DataToolkit.BulkTransfer.csproj" />
+    <ProjectReference Include="..\..\Library\DataToolkit.Library\DataToolkit.Library.csproj" />
+    <ProjectReference Include="..\..\Library\DataToolkit.Provider.SqlServer\DataToolkit.Provider.SqlServer.csproj" />
   </ItemGroup>
 
 </Project>
