@@ -71,7 +71,12 @@ public class MigrationController : ControllerBase
                 _target,
                 request.Schema,
                 request.Tables);
-        request.Tables = completeTables;
+        
+        //sumar tablas filtrando
+        request.Tables = request.Tables
+            .Union(completeTables, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
 
         //Level 2
         completeTables = null;
@@ -80,7 +85,11 @@ public class MigrationController : ControllerBase
                 _target,
                 request.Schema,
                 request.Tables);
-        request.Tables = completeTables;
+
+        //sumar tablas filtrando
+        request.Tables = request.Tables
+            .Union(completeTables, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         //Organizar tablas
         IReadOnlyList<string> executionPlan =
