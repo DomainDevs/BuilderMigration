@@ -5,6 +5,7 @@ using DataToolkit.MigrationBuilder.Infrastructure.Migration;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 
 namespace DataToolkit.MigrationBuilder.Services;
@@ -39,8 +40,11 @@ public sealed class MigrationExecutionService
     {
         List<MigrationTableResult> migrationResult = new();
 
-        foreach (var artifact in _discovery.Discover(ddlFolder, sqlFolder))
+        foreach (MigrationArtifact artifact in _discovery.Discover(ddlFolder, sqlFolder))
         {
+            try
+            {
+
             string? ddl = await File.ReadAllTextAsync(artifact.DdlFile);
 
             await _db.ExecuteDdlAsync(target, ddl);
@@ -63,6 +67,7 @@ public sealed class MigrationExecutionService
                     artifact.Schema,
                     artifact.Table);
 
+
             // Validar tablas requeridas por llaves foráneas.
             var foreignKeys = destinationTable
                 .Single()
@@ -76,12 +81,14 @@ public sealed class MigrationExecutionService
                     $"SELECT COUNT(*) FROM [{destinationTable.Single().Schema}].[{column.ForeignTable}]"))
                     .Single();
 
-                if (count == 0)
-                {
-                    throw new InvalidOperationException(
+                if (artifact.SqlFile is not null)
+                    if (count == 0)
+                    {
+                        // Si no existe script SQL únicamente se crea la tabla.
+                        throw new InvalidOperationException(
                         $"❌ No es posible migrar [{destinationTable.Single().Name}] porque la tabla [{column.ForeignTable}] está vacía. " +
                         $"Column: [{column.Name}] - FK [{column.ForeignKeyName}].");
-                }
+                    }
             }
 
             // Validar tabla destino.
@@ -104,70 +111,67 @@ public sealed class MigrationExecutionService
                 }
             }
 
-            // Si no existe script SQL únicamente se crea la tabla.
-            if (artifact.SqlFile is null)
-            {
-                continue;
-            }
+            long stgCount = 0;
+            long destinationCount = 0;
 
-            string? sql = await File.ReadAllTextAsync(artifact.SqlFile);
+            if (artifact.SqlFile is not null)
+            { 
+                string? sql = await File.ReadAllTextAsync(artifact.SqlFile);
+                sql = RemoveComments(sql);
+                SqlScriptValidator.Validate(sql);
 
-            sql = RemoveComments(sql);
+                await using SqlConnection sourceConnection =
+                    new(_configuration.GetConnectionString("Source"));
 
+                await using SqlConnection targetConnection =
+                    new(_configuration.GetConnectionString("Target"));
 
-            SqlScriptValidator.Validate(sql);
+                await using SqlConnection targetReadConnection =
+                    new(_configuration.GetConnectionString("Target"));
 
-            await using SqlConnection sourceConnection =
-                new(_configuration.GetConnectionString("Source"));
+                await sourceConnection.OpenAsync();
+                await targetConnection.OpenAsync();
+                await targetReadConnection.OpenAsync();
 
-            await using SqlConnection targetConnection =
-                new(_configuration.GetConnectionString("Target"));
+                // Origen -> STG
+                await _bulk.TransferAsync(
+                    sourceConnection,
+                    targetConnection,
+                    sql,
+                    artifactTable.Single());
 
-            await using SqlConnection targetReadConnection =
-                new(_configuration.GetConnectionString("Target"));
+                // STG -> Tabla Final
+                string insertSql =
+                    BuildInsert(
+                        destinationTable.Single(),
+                        false);
 
-            await sourceConnection.OpenAsync();
-            await targetConnection.OpenAsync();
-            await targetReadConnection.OpenAsync();
+                string columnList =
+                    BuildColumnList(
+                        destinationTable.Single());
 
-            // Origen -> STG
-            await _bulk.TransferAsync(
-                sourceConnection,
-                targetConnection,
-                sql,
-                artifactTable.Single());
+                columnList =
+                    $"SELECT {columnList} FROM [{artifact.Schema}].[{artifact.Prefix}_{artifact.Table}]";
 
-            // STG -> Tabla Final
-            string insertSql =
-                BuildInsert(
-                    destinationTable.Single(),
-                    false);
+                string sqlInstruction =
+                    $"{insertSql}{Environment.NewLine}{columnList}";
 
-            string columnList =
-                BuildColumnList(
-                    destinationTable.Single());
+                await target.Sql.ExecuteAsync(sqlInstruction);
 
-            columnList =
-                $"SELECT {columnList} FROM [{artifact.Schema}].[{artifact.Prefix}_{artifact.Table}]";
+                // Validar cantidad de registros migrados.
+                stgCount = (await target.Sql.FromSqlAsync<long>(
+                    $"SELECT COUNT(*) FROM [{artifact.Schema}].[{artifact.Prefix}_{artifact.Table}]"))
+                    .Single();
 
-            string sqlInstruction =
-                $"{insertSql}{Environment.NewLine}{columnList}";
+                destinationCount = (await target.Sql.FromSqlAsync<long>(
+                    $"SELECT COUNT(*) FROM [{artifact.Schema}].[{artifact.Table}]"))
+                    .Single();
 
-            await target.Sql.ExecuteAsync(sqlInstruction);
-
-            // Validar cantidad de registros migrados.
-            long stgCount = (await target.Sql.FromSqlAsync<long>(
-                $"SELECT COUNT(*) FROM [{artifact.Schema}].[{artifact.Prefix}_{artifact.Table}]"))
-                .Single();
-
-            long destinationCount = (await target.Sql.FromSqlAsync<long>(
-                $"SELECT COUNT(*) FROM [{artifact.Schema}].[{artifact.Table}]"))
-                .Single();
-
-            if (stgCount != destinationCount)
-            {
-                throw new InvalidOperationException(
-                    $"❌ La migración de [{artifact.Table}] finalizó con inconsistencias. STG: {stgCount} registro(s). Destino: {destinationCount} registro(s).");
+                if (stgCount != destinationCount)
+                {
+                    throw new InvalidOperationException(
+                        $"❌ La migración de [{artifact.Table}] finalizó con inconsistencias. STG: {stgCount} registro(s). Destino: {destinationCount} registro(s).");
+                }
             }
 
             // Todas las migraciones finalizaron correctamente.
@@ -179,22 +183,51 @@ public sealed class MigrationExecutionService
                     "DDL",
                     Path.GetFileName(artifact.DdlFile)));
 
-            MoveFile(
-                artifact.SqlFile!,
-                Path.Combine(
-                    approvedPath,
-                    "EXTRACTION",
-                    Path.GetFileName(artifact.SqlFile)));
+            if (artifact.SqlFile is not null)
+                MoveFile(
+                    artifact.SqlFile!,
+                    Path.Combine(
+                        approvedPath,
+                        "EXTRACTION",
+                        Path.GetFileName(artifact.SqlFile)));
+            
 
-
-            migrationResult.Add(new MigrationTableResult
+            if (artifact.SqlFile is null)
             {
-                Table = artifact.Table,
-                StagingRows = stgCount,
-                DestinationRows = destinationCount,
-                Success = true,
-                Message = $"✅ Migración completada correctamente. {destinationCount} registro(s) migrados."
-            });
+                migrationResult.Add(new MigrationTableResult
+                {
+                    Table = artifact.Table,
+                    StagingRows = stgCount,
+                    DestinationRows = destinationCount,
+                    Success = true,
+                    Message = $"✅ Ejecución completada correctamente. Sin extracción de datos."
+                });
+            }
+            else
+            {
+                migrationResult.Add(new MigrationTableResult
+                {
+                    Table = artifact.Table,
+                    StagingRows = stgCount,
+                    DestinationRows = destinationCount,
+                    Success = true,
+                    Message = $"✅ Migración completada correctamente. {destinationCount} registro(s) migrados."
+                });
+            }
+            }
+            catch (Exception ex)
+            {
+                migrationResult.Add(new MigrationTableResult
+                {
+                    Table = artifact.Table,
+                    StagingRows = 0,
+                    DestinationRows = 0,
+                    Success = false,
+                    Message = $"❌ La ejecucion finalizo con inconsistencias [{artifact.Schema}].[{artifact.Table}]." + ex.Message + ex.InnerException.Message.ToString ()
+
+                });
+            }
+
         }
 
         return migrationResult;

@@ -16,12 +16,12 @@ public sealed class ArtifactDiscoveryService
             var m = Rx.Match(Path.GetFileName(file));
             if (!m.Success) continue;
 
-            var order = m.Groups["Order"].Value;
-            var schema = m.Groups["Schema"].Value;
-            var prefix = m.Groups["Prefix"].Value;
-            var table = m.Groups["Table"].Value;
+            string order = m.Groups["Order"].Value;
+            string schema = m.Groups["Schema"].Value;
+            string prefix = m.Groups["Prefix"].Value;
+            string table = m.Groups["Table"].Value;
 
-            var sql = Path.Combine(sqlFolder, $"{order}_SQL_{schema}.{prefix}_{table}.sql");
+            string sqlArtefact = Path.Combine(sqlFolder, $"{order}_SQL_{schema}.{prefix}_{table}.sql");
 
             yield return new MigrationArtifact
             {
@@ -31,7 +31,7 @@ public sealed class ArtifactDiscoveryService
                 Prefix = prefix,
                 Table = table,
                 DdlFile = file,
-                SqlFile = File.Exists(sql) ? sql : null
+                SqlFile = File.Exists(sqlArtefact) ? sqlArtefact : null
             };
         }
     }
