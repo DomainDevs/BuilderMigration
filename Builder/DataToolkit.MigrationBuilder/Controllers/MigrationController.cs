@@ -5,6 +5,7 @@ using DataToolkit.MigrationBuilder.Helpers;
 using DataToolkit.MigrationBuilder.Infrastructure.Connect;
 using DataToolkit.MigrationBuilder.Services;
 using DataToolkit.MigrationBuilder.Services.Migration;
+using DataToolkit.MigrationBuilder.Services.Planning;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DataToolkit.MigrationBuilder.Controllers;
@@ -22,6 +23,7 @@ public class MigrationController : ControllerBase
     private readonly MigrationExecutionService _migrationExecutionService;
 
     private readonly MigrationPlanningService _migrationPlanningService;
+    private readonly DependencyResolverService _dependencyResolver;
 
     private readonly IUnitOfWork _source; //context db1
     private readonly IUnitOfWork _target; //context db2
@@ -32,12 +34,9 @@ public class MigrationController : ControllerBase
     MigrationWorkFileService workFileService,
     MigrationDdlGeneratorService ddlGeneratorService,
     MigrationExtractionGeneratorService migrationExtractionGeneratorService,
-    
-
     MigrationExecutionService migrationExecutionService,
-
     MigrationPlanningService migrationPlanningService,
-
+    DependencyResolverService dependencyResolver,
     DataToolkitContext context)
     {
         _metadataService = metadataService;
@@ -46,17 +45,52 @@ public class MigrationController : ControllerBase
         _ddlGeneratorService = ddlGeneratorService;
         _migrationExtractionGeneratorService = migrationExtractionGeneratorService;
         _migrationExecutionService = migrationExecutionService;
+
         _migrationPlanningService = migrationPlanningService;
+        _dependencyResolver = dependencyResolver;
 
         _source = context.Source;
         _target = context.Target;
     }
 
+    /// <summary>
+    /// Genera el plan de ejecución de migración.
+    /// </summary>
+    [HttpPost("plan")]
+    public async Task<IActionResult> GenerateMigrationPlan(
+        [FromBody] CompareRequest request)
+    {
+        /*
+        IReadOnlyList<TableMetadata> executionPlan =
+            await _migrationPlanningService.BuildExecutionPlanAsync(
+                _source,
+                request.Schema,
+                request.Tables);
+        */
+        List<string> completeTables =
+            await _dependencyResolver.ResolveDependenciesAsync(
+                _target,
+                request.Schema,
+                request.Tables);
+        request.Tables = completeTables;
+
+        IReadOnlyList<string> executionPlan =
+            await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
+                _target,
+                request.Schema,
+                request.Tables);
+
+        return Ok(new
+        {
+            TotalTables = executionPlan.Count,
+            Tables = executionPlan
+        });
+    }
 
     /// <summary>
     /// Genera scripts SQL creacion tabla WF.
     /// </summary>
-    [HttpPost("generate-ddl")]
+    [HttpPost("ddl")]
     public async Task<IActionResult> GenerateDdl(
         [FromBody] CompareRequest request)
     {
@@ -90,7 +124,7 @@ public class MigrationController : ControllerBase
     /// <summary>
     /// Genera scripts SQL de extracción para poblar los Work Files.
     /// </summary>
-    [HttpPost("generate-extraction")]
+    [HttpPost("extraction")]
     public async Task<IActionResult> GenerateExtraction(
         [FromBody] CompareRequest request)
     {
@@ -126,7 +160,7 @@ public class MigrationController : ControllerBase
     /// Ejecuta la migración utilizando los artefactos generados
     /// (DDL + SQL + WorkFiles).
     /// </summary>
-    [HttpPost("execute-migration")]
+    [HttpPost("execute")]
     public async Task<IActionResult> ExecuteMigration(
         [FromBody] ExecutionRequest request)
     {
@@ -167,34 +201,6 @@ public class MigrationController : ControllerBase
                 Detail = ex.InnerException?.Message
             });
         }
-    }
-
-    /// <summary>
-    /// Genera el plan de ejecución de migración.
-    /// </summary>
-    [HttpPost("migration-plan")]
-    public async Task<IActionResult> GenerateMigrationPlan(
-        [FromBody] CompareRequest request)
-    {
-        /*
-        IReadOnlyList<TableMetadata> executionPlan =
-            await _migrationPlanningService.BuildExecutionPlanAsync(
-                _source,
-                request.Schema,
-                request.Tables);
-        */
-
-        IReadOnlyList<string> executionPlan =
-            await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
-                _target,
-                request.Schema,
-                request.Tables);
-
-        return Ok(new
-        {
-            TotalTables = executionPlan.Count,
-            Tables = executionPlan
-        });
     }
 
 }

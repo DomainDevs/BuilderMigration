@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace DataToolkit.MigrationBuilder.Services;
+namespace DataToolkit.MigrationBuilder.Services.Planning;
 
 public static class MigrationPlanningExtensions
 {

@@ -1,7 +1,7 @@
 using DataToolkit.Library;
 using DataToolkit.Library.UnitOfWorkLayer;
 
-namespace DataToolkit.MigrationBuilder.Services;
+namespace DataToolkit.MigrationBuilder.Services.Planning;
 
 public sealed class MigrationPlanningService
 {

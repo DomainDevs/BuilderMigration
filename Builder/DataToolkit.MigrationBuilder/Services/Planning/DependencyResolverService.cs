@@ -1,0 +1,60 @@
+﻿using DataToolkit.Library;
+using DataToolkit.Library.UnitOfWorkLayer;
+
+namespace DataToolkit.MigrationBuilder.Services.Planning;
+
+public sealed class DependencyResolverService
+{
+    private readonly MetadataService _metadataService;
+
+    public DependencyResolverService(
+        MetadataService metadataService)
+    {
+        _metadataService = metadataService;
+    }
+
+    public async Task<List<string>> ResolveDependenciesAsync(
+        IUnitOfWork source,
+        string? schema,
+        List<string>? tables)
+    {
+        HashSet<string> result =
+            new(
+                tables ?? [],
+                StringComparer.OrdinalIgnoreCase);
+
+        bool hasChanges;
+
+        do
+        {
+            hasChanges = false;
+
+            List<TableMetadata> metadata =
+                await _metadataService.ExtractMetadataAsync(
+                    source,
+                    schema,
+                    result.ToList());
+
+            foreach (TableMetadata table in metadata)
+            {
+                foreach (ColumnMetadata column in table.Columns)
+                {
+                    if (string.IsNullOrWhiteSpace(column.ForeignTable))
+                    {
+                        continue;
+                    }
+
+                    if (result.Add(column.ForeignTable))
+                    {
+                        hasChanges = true;
+                    }
+                }
+            }
+
+        } while (hasChanges);
+
+        return result
+            .OrderBy(x => x)
+            .ToList();
+    }
+}

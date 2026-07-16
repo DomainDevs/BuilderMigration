@@ -1,6 +1,6 @@
 using DataToolkit.Library;
 
-namespace DataToolkit.MigrationBuilder.Services;
+namespace DataToolkit.MigrationBuilder.Services.Planning;
 
 public sealed class DependencyAnalyzer
 {
