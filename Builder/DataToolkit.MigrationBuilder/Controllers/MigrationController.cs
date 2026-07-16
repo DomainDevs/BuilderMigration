@@ -63,10 +63,9 @@ public class MigrationController : ControllerBase
         /*
         IReadOnlyList<TableMetadata> executionPlan =
             await _migrationPlanningService.BuildExecutionPlanAsync(
-                _source,
-                request.Schema,
-                request.Tables);
-        */
+                _source, request.Schema, request.Tables);*/
+
+        //Level 1
         List<string> completeTables =
             await _dependencyResolver.ResolveDependenciesAsync(
                 _target,
@@ -74,6 +73,16 @@ public class MigrationController : ControllerBase
                 request.Tables);
         request.Tables = completeTables;
 
+        //Level 2
+        completeTables = null;
+        completeTables =
+            await _dependencyResolver.ResolveDependenciesAsync(
+                _target,
+                request.Schema,
+                request.Tables);
+        request.Tables = completeTables;
+
+        //Organizar tablas
         IReadOnlyList<string> executionPlan =
             await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
                 _target,
