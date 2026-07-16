@@ -24,6 +24,9 @@ public sealed class MigrationDdlGeneratorService
         Directory.CreateDirectory(
             _options.SqlOutputPath);
 
+        //metadataSource = NormalizeMetadata(metadataSource);
+        //metadataTarget = NormalizeMetadata(metadataTarget);
+
         foreach (TableMetadata sourceTable in metadataSource)
         {
             TableMetadata? targetTable =
@@ -57,6 +60,31 @@ public sealed class MigrationDdlGeneratorService
             await File.WriteAllTextAsync(
                 filePath,
                 ddl);
+        }
+    }
+
+    private static List<TableMetadata> NormalizeMetadata(
+        IEnumerable<TableMetadata> metadata)
+    {
+        return metadata
+            .GroupBy(
+                x => $"{x.Schema}.{x.Name}",
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private static void NormalizeColumns(
+        IEnumerable<TableMetadata> metadata)
+    {
+        foreach (TableMetadata table in metadata)
+        {
+            table.Columns = table.Columns
+                .GroupBy(
+                    x => x.Name,
+                    StringComparer.OrdinalIgnoreCase)
+                .Select(x => x.First())
+                .ToList();
         }
     }
 
