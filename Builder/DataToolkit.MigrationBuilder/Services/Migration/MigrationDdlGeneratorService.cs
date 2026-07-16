@@ -24,8 +24,8 @@ public sealed class MigrationDdlGeneratorService
         Directory.CreateDirectory(
             _options.SqlOutputPath);
 
-        //metadataSource = NormalizeMetadata(metadataSource);
-        //metadataTarget = NormalizeMetadata(metadataTarget);
+        metadataSource = NormalizeColumns(metadataSource);
+        metadataTarget = NormalizeColumns(metadataTarget);
 
         foreach (TableMetadata sourceTable in metadataSource)
         {
@@ -74,10 +74,12 @@ public sealed class MigrationDdlGeneratorService
             .ToList();
     }
 
-    private static void NormalizeColumns(
+    private static List<TableMetadata> NormalizeColumns(
         IEnumerable<TableMetadata> metadata)
     {
-        foreach (TableMetadata table in metadata)
+        List<TableMetadata> tables = metadata.ToList();
+
+        foreach (TableMetadata table in tables)
         {
             table.Columns = table.Columns
                 .GroupBy(
@@ -86,6 +88,8 @@ public sealed class MigrationDdlGeneratorService
                 .Select(x => x.First())
                 .ToList();
         }
+
+        return tables;
     }
 
     private static string BuildCreateTable(
