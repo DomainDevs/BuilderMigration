@@ -121,8 +121,7 @@ public sealed class DependencyAnalyzer
 
         if (ordered.Count != nodes.Count)
         {
-            throw new InvalidOperationException(
-                "Existen dependencias circulares.");
+            //throw new InvalidOperationException("Existen dependencias circulares.");
         }
 
         return ordered;

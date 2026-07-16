@@ -223,7 +223,7 @@ public sealed class MigrationExecutionService
                     StagingRows = 0,
                     DestinationRows = 0,
                     Success = false,
-                    Message = $"❌ La ejecucion finalizo con inconsistencias [{artifact.Schema}].[{artifact.Table}]." + ex.Message
+                    Message = $"❌ La ejecucion finalizo con inconsistencias [{artifact.Schema}].[{artifact.Table}]." + ex.Message //+ ex.InnerException.Message.ToString ()
 
                 });
             }
