@@ -1,4 +1,5 @@
 ﻿using DataToolkit.BulkTransfer.Core;
+using DataToolkit.Library;
 using DataToolkit.Library.UnitOfWorkLayer;
 using DataToolkit.MigrationBuilder.Helpers;
 using DataToolkit.MigrationBuilder.Infrastructure.Connect;
@@ -20,6 +21,8 @@ public class MigrationController : ControllerBase
 
     private readonly MigrationExecutionService _migrationExecutionService;
 
+    private readonly MigrationPlanningService _migrationPlanningService;
+
     private readonly IUnitOfWork _source; //context db1
     private readonly IUnitOfWork _target; //context db2
 
@@ -30,7 +33,10 @@ public class MigrationController : ControllerBase
     MigrationDdlGeneratorService ddlGeneratorService,
     MigrationExtractionGeneratorService migrationExtractionGeneratorService,
     
+
     MigrationExecutionService migrationExecutionService,
+
+    MigrationPlanningService migrationPlanningService,
 
     DataToolkitContext context)
     {
@@ -40,6 +46,7 @@ public class MigrationController : ControllerBase
         _ddlGeneratorService = ddlGeneratorService;
         _migrationExtractionGeneratorService = migrationExtractionGeneratorService;
         _migrationExecutionService = migrationExecutionService;
+        _migrationPlanningService = migrationPlanningService;
 
         _source = context.Source;
         _target = context.Target;
@@ -160,6 +167,34 @@ public class MigrationController : ControllerBase
                 Detail = ex.InnerException?.Message
             });
         }
+    }
+
+    /// <summary>
+    /// Genera el plan de ejecución de migración.
+    /// </summary>
+    [HttpPost("migration-plan")]
+    public async Task<IActionResult> GenerateMigrationPlan(
+        [FromBody] CompareRequest request)
+    {
+        /*
+        IReadOnlyList<TableMetadata> executionPlan =
+            await _migrationPlanningService.BuildExecutionPlanAsync(
+                _source,
+                request.Schema,
+                request.Tables);
+        */
+
+        IReadOnlyList<string> executionPlan =
+            await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
+                _target,
+                request.Schema,
+                request.Tables);
+
+        return Ok(new
+        {
+            TotalTables = executionPlan.Count,
+            Tables = executionPlan
+        });
     }
 
 }

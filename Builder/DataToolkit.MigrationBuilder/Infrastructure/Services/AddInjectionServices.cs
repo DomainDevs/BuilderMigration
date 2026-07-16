@@ -22,6 +22,9 @@ public static class AddInjectionServices
         services.AddScoped<ArtifactDiscoveryService>();
         services.AddScoped<DatabaseRuntimeService>();
 
+        services.AddSingleton<DependencyAnalyzer>();
+        services.AddScoped<MigrationPlanningService>();
+
 
         services.AddSingleton<ISqlScriptExecutor, SqlScriptExecutor>();
 
