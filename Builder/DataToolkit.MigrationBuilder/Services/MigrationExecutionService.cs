@@ -68,14 +68,25 @@ public sealed class MigrationExecutionService
                     artifact.Table);
 
 
-            // Validar tablas requeridas por llaves foráneas.
-            var foreignKeys = destinationTable
-                .Single()
-                .Columns
-                .Where(c => !string.IsNullOrWhiteSpace(c.ForeignKeyName))
-                .ToList();
+                // Validar tablas requeridas por llaves foráneas.
+                /*
+                var foreignKeys = destinationTable
+                    .Single()
+                    .Columns
+                    .Where(c => !string.IsNullOrWhiteSpace(c.ForeignKeyName))
+                    .ToList();*/
+                var foreignKeys = destinationTable
+                    .Single()
+                    .Columns
+                    .Where(c =>
+                        !string.IsNullOrWhiteSpace(c.ForeignKeyName) &&
+                        !string.Equals(
+                            c.ForeignTable,
+                            destinationTable.Single().Name,
+                            StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
-            foreach (var column in foreignKeys)
+                foreach (var column in foreignKeys)
             {
                 long count = (await target.Sql.FromSqlAsync<long>(
                     $"SELECT COUNT(*) FROM [{destinationTable.Single().Schema}].[{column.ForeignTable}]"))
@@ -223,7 +234,8 @@ public sealed class MigrationExecutionService
                     StagingRows = 0,
                     DestinationRows = 0,
                     Success = false,
-                    Message = $"❌ La ejecucion finalizo con inconsistencias [{artifact.Schema}].[{artifact.Table}]." + ex.Message //+ ex.InnerException.Message.ToString ()
+                    Message = $"❌ La ejecucion finalizo con inconsistencias [{artifact.Schema}].[{artifact.Table}]." + ex.Message +
+                    (Environment.NewLine) + (ex.InnerException?.Message ?? "")
 
                 });
             }
