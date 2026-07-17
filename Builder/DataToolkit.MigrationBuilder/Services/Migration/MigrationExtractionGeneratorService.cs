@@ -125,6 +125,7 @@ FROM [{sourceTable.Schema}].[{sourceTable.Name}];
 """;
     }
 
+    /*
     private static string BuildColumn(
         ColumnMetadata? sourceColumn,
         ColumnMetadata targetColumn)
@@ -141,13 +142,43 @@ FROM [{sourceTable.Schema}].[{sourceTable.Name}];
 
         return
             $"    {expression} AS [{targetColumn.Name}]{warning}";
+    }*/
+    private static string BuildColumn(
+        ColumnMetadata? sourceColumn,
+        ColumnMetadata targetColumn)
+    {
+        string expression;
+
+        if (sourceColumn is not null)
+        {
+            expression = $"[{sourceColumn.Name}]";
+
+            if (!string.IsNullOrWhiteSpace(sourceColumn.Collation) &&
+                !string.IsNullOrWhiteSpace(targetColumn.Collation) &&
+                !sourceColumn.Collation.Equals(targetColumn.Collation,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                expression += $" COLLATE {targetColumn.Collation}";
+            }
+        }
+        else
+        {
+            expression = GetDefaultValue(targetColumn);
+        }
+
+        string warning =
+            MigrationWarningExtensions.BuildWarning(
+                sourceColumn,
+                targetColumn);
+
+        return $"    {expression} AS [{targetColumn.Name}]{warning}";
     }
 
     private static string GetDefaultValue(ColumnMetadata column)
     {
         // Si acepta NULL, no hay problema.
-        if (column.IsNullable)
-            return "NULL";
+        //if (column.IsNullable)
+        //    return "NULL";
 
         string dataType = column.SqlType.ToLowerInvariant();
 

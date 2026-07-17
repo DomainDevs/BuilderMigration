@@ -10,19 +10,19 @@ public static class MigrationWarningExtensions
         return warning switch
         {
             MigrationWarning.DataTypeMismatch =>
-                "Verifique que el tipo de dato de la columna origen sea compatible con el de la columna destino.",
+                "Verifique tipo de dato, columna origen vs la columna destino.",
 
             MigrationWarning.LengthMismatch =>
-                "Verifique que la longitud de la columna origen sea compatible con la de la columna destino.",
+                "Verifique que la longitud, columna origen vs destino.",
 
             MigrationWarning.PrecisionMismatch =>
-                "Verifique que la precisión de la columna origen sea compatible con la de la columna destino.",
+                "Verifique que la precisión, columna origen vs destino.",
 
             MigrationWarning.ScaleMismatch =>
-                "Verifique que la escala de la columna origen sea compatible con la de la columna destino.",
+                "Verifique que la escala, columna origen compatible vs destino.",
 
             MigrationWarning.NullableMismatch =>
-                "Verifique que la configuración de valores nulos entre las columnas origen y destino sea compatible.",
+                "Verifique valores nulos, columnas origen vs destino.",
 
             MigrationWarning.MissingTargetColumn =>
                 "La columna no existe en la tabla destino.",

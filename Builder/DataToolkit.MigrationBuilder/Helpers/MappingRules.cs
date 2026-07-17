@@ -4,7 +4,8 @@
 Semántica:
 -------------------------------------------------------------------
 Regla	Significado
-DIRECT	Mismo nombre y tipo compatible
+DIRECT	Mismo nombre y tipo 
+
 REVIEW	El Builder cree que corresponde pero necesita validación
 UNMAPPED	No encontró correspondencia
 LOOKUP	Requiere homologación/parametrización

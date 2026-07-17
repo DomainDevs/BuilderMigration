@@ -1,10 +1,12 @@
 ﻿using DataToolkit.BulkTransfer.Abstractions;
+using DataToolkit.BulkTransfer.Core;
 using DataToolkit.Library;
 using DataToolkit.Library.UnitOfWorkLayer;
 using DataToolkit.MigrationBuilder.Infrastructure.Migration;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 
@@ -117,9 +119,16 @@ public sealed class MigrationExecutionService
 
                 if (count > 0)
                 {
-                    throw new InvalidOperationException(
-                        $"❌ La tabla destino [{artifact.Schema}].[{artifact.Table}] contiene {count} registros. Debe vaciarla antes de ejecutar la migración.");
-                }
+                        //throw new InvalidOperationException(
+                        //    $"❌ La tabla destino [{artifact.Schema}].[{artifact.Table}] contiene {count} registros. Debe vaciarla antes de ejecutar la migración.");
+
+                        migrationResult.Add(new MigrationTableResult
+                        {
+                            Table = artifact.Table,
+                            Success = true,
+                            Message = $"⚠️ La tabla destino [{artifact.Schema}].[{artifact.Table}] contiene {count} registro(s)."
+                        });
+                    }
             }
 
             long stgCount = 0;
@@ -144,12 +153,19 @@ public sealed class MigrationExecutionService
                 await targetConnection.OpenAsync();
                 await targetReadConnection.OpenAsync();
 
-                // Origen -> STG
-                await _bulk.TransferAsync(
-                    sourceConnection,
-                    targetConnection,
-                    sql,
-                    artifactTable.Single());
+                    // Origen -> STG
+                    BulkTransferOptions options = new BulkTransferOptions
+                    {
+                        BatchSize = 5000,
+                        Timeout = 500
+                    };
+
+                    await _bulk.TransferAsync(
+                        sourceConnection,
+                        targetConnection,
+                        sql,
+                        artifactTable.Single(),
+                        options);
 
                 // STG -> Tabla Final
                 string insertSql =
