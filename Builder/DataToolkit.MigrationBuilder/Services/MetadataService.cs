@@ -1,7 +1,5 @@
 ﻿using DataToolkit.Library;
-using DataToolkit.Library.Fluent;
 using DataToolkit.Library.UnitOfWorkLayer;
-using DataToolkit.MigrationBuilder.Infrastructure.Queries;
 
 namespace DataToolkit.MigrationBuilder.Services;
 

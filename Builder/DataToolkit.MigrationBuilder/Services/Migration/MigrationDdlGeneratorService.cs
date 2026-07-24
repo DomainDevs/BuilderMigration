@@ -104,24 +104,29 @@ public sealed class MigrationDdlGeneratorService
 
         List<string> columns = [];
 
-        // El WFile/Homologation utiliza siempre la estructura del destino para garantizar compatibilidad con la carga.
-        foreach (ColumnMetadata targetColumn in targetTable.Columns)
+        for (int i = 0; i < targetTable.Columns.Count; i++)
         {
+            ColumnMetadata targetColumn = targetTable.Columns[i];
+
             ColumnMetadata? sourceColumn =
                 sourceTable.Columns.FirstOrDefault(c =>
                     c.Name.Equals(
                         targetColumn.Name,
                         StringComparison.OrdinalIgnoreCase));
 
+            bool appendComma =
+                i < targetTable.Columns.Count - 1;
+
             columns.Add(
                 BuildColumn(
                     sourceColumn,
-                    targetColumn));
+                    targetColumn,
+                    appendComma));
         }
 
         string columnScript =
             string.Join(
-                "," + Environment.NewLine,
+                Environment.NewLine,
                 columns);
 
         return
@@ -149,17 +154,21 @@ GO
 
     private static string BuildColumn(
         ColumnMetadata? sourceColumn,
-        ColumnMetadata targetColumn)
+        ColumnMetadata targetColumn,
+        bool appendComma)
     {
         string warning =
             MigrationWarningExtensions.BuildWarning(
                 sourceColumn,
                 targetColumn);
 
+        string comma =
+            appendComma ? "," : string.Empty;
+
         return
-            $"        [{targetColumn.Name}] {MigrationWarningExtensions.BuildSqlType(targetColumn)} NULL{warning}";
+            $"        [{targetColumn.Name}] {MigrationWarningExtensions.BuildSqlType(targetColumn)} NULL{comma}{warning}";
     }
 
-    
+
 
 }
